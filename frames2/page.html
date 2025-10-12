@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>.</title>
+        <link rel="icon" href="./icon-removebg-preview.png">
+        <style>
+            body {
+                margin: 0;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                overflow: hidden;
+                background-color: black;
+                color: white;
+                font-family: sans-serif;
+            }
+
+            #animation-image {
+                /* You may need to adjust these dimensions based on the actual frame size */
+                width: 540px; 
+                height: 480px; 
+            }
+
+            #animation-image.hidden {
+                display: none;
+            }
+
+            #loading-indicator {
+                font-size: 1.5em;
+                text-align: center;
+            }
+        </style>
+    </head>
+    <body>
+
+        <div id="loading-indicator">
+            <p>Loading frames... (0%)</p>
+        </div>
+
+        <img id="animation-image" src="" class="hidden" alt="Animation Frame">
+
+        <script>
+            const animationImage = document.getElementById('animation-image');
+            const loadingIndicator = document.getElementById('loading-indicator');
+
+            // --- CHANGES START HERE ---
+            const startFrameNumber = 1;  // FFmpeg output starts at frame0001
+            const endFrameNumber = 12;   // 60 seconds * (1/5 fps) = 12 frames (approx.)
+
+            const totalFrames = endFrameNumber - startFrameNumber + 1;
+            const framesPath = './frames2/'; // New folder name
+            // --- CHANGES END HERE ---
+            
+            const images = [];
+            let imagesLoaded = 0;
+
+            function handleMouseMove(event) {
+                const mouseXPercentage = event.clientX / window.innerWidth;
+                let frameIndex = Math.floor(mouseXPercentage * totalFrames);
+
+                frameIndex = Math.max(0, Math.min(frameIndex, totalFrames - 1));
+
+                if (images[frameIndex] && animationImage.src !== images[frameIndex].src) {
+                    animationImage.src = images[frameIndex].src;
+                }
+            }
+
+            function preloadImages() {
+                const imagesToLoadPaths = [];
+                for (let i = 0; i < totalFrames; i++) {
+                    const actualFrameNumber = startFrameNumber + i;
+                    const paddedFrame = String(actualFrameNumber).padStart(4, '0');
+                    // --- CHANGED .png TO .jpg ---
+                    const imagePath = framesPath + 'frame' + paddedFrame + '.jpg'; 
+                    imagesToLoadPaths.push(imagePath);
+                }
+
+                let nextImageIndex = 0;
+                const loadNextChunk = () => {
+                    const chunkSize = 50;
+                    const chunk = imagesToLoadPaths.slice(nextImageIndex, nextImageIndex + chunkSize);
+
+                    chunk.forEach((imagePath, indexInChunk) => {
+                        const img = new Image();
+                        images[nextImageIndex + indexInChunk] = img;
+                        img.onload = img.onerror = () => {
+                            imagesLoaded++;
+                            loadingIndicator.querySelector('p').textContent = `Loading frames... (${Math.floor((imagesLoaded / totalFrames) * 100)}%)`;
+
+                            if (imagesLoaded === totalFrames) {
+                                console.log('All images processed! Animation ready.');
+                                loadingIndicator.style.display = 'none';
+                                animationImage.classList.remove('hidden');
+                                document.addEventListener('mousemove', handleMouseMove);
+                                animationImage.src = images[0].src;
+                            }
+                        };
+                        img.src = imagePath;
+                    });
+
+                    nextImageIndex += chunkSize;
+                    if (nextImageIndex < totalFrames) {
+                        setTimeout(loadNextChunk, 100);
+                    }
+                };
+                loadNextChunk();
+            }
+
+            preloadImages();
+        </script>
+    </body>
+</html>
