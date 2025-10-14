@@ -3,6 +3,7 @@
     <head>
         <title>.</title>
         <link rel="icon" href="./icon-removebg-preview.png">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
             body {
                 margin: 0;
@@ -20,6 +21,8 @@
             #animation-image {
                 width: 540px;
                 height: 480px;
+                max-width: 100%;
+                height: auto;
             }
 
             #animation-image.hidden {
@@ -44,12 +47,16 @@
             const animationImage = document.getElementById('animation-image');
             const loadingIndicator = document.getElementById('loading-indicator');
 
-            // 1. Corrected frame range for 12 extracted frames (frame0001.jpg to frame0012.jpg)
+            const isMobile = /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+            
+            const AUTOPLAY_SPEED_MS = 80;
+            let currentFrameIndex = 0;
+            let autoplayInterval = null;
+
             const startFrameNumber = 1;
             const endFrameNumber = 12;
 
             const totalFrames = endFrameNumber - startFrameNumber + 1;
-            // 2. Corrected path to look in the current directory (where the frames were uploaded)
             const framesPath = './'; 
             const images = [];
             let imagesLoaded = 0;
@@ -64,13 +71,42 @@
                     animationImage.src = images[frameIndex].src;
                 }
             }
+            
+            function startAutoplay() {
+                if (autoplayInterval) return;
+
+                autoplayInterval = setInterval(() => {
+                    currentFrameIndex = (currentFrameIndex + 1) % totalFrames;
+                    
+                    if (images[currentFrameIndex]) {
+                        animationImage.src = images[currentFrameIndex].src;
+                    }
+                }, AUTOPLAY_SPEED_MS);
+            }
+
+            function onImagesReady() {
+                loadingIndicator.style.display = 'none';
+                animationImage.classList.remove('hidden');
+                
+                animationImage.src = images[0].src;
+
+                if (isMobile) {
+                    startAutoplay();
+                    
+                    document.addEventListener('touchstart', startAutoplay, { once: true });
+                    document.addEventListener('click', startAutoplay, { once: true });
+
+                } else {
+                    document.addEventListener('mousemove', handleMouseMove);
+                }
+            }
+
 
             function preloadImages() {
                 const imagesToLoadPaths = [];
                 for (let i = 0; i < totalFrames; i++) {
                     const actualFrameNumber = startFrameNumber + i;
                     const paddedFrame = String(actualFrameNumber).padStart(4, '0');
-                    // 3. Corrected file extension from .png to .jpg
                     const imagePath = framesPath + 'frame' + paddedFrame + '.jpg'; 
                     imagesToLoadPaths.push(imagePath);
                 }
@@ -88,11 +124,7 @@
                             loadingIndicator.querySelector('p').textContent = `Loading frames... (${Math.floor((imagesLoaded / totalFrames) * 100)}%)`;
 
                             if (imagesLoaded === totalFrames) {
-                                console.log('All images processed! Animation ready.');
-                                loadingIndicator.style.display = 'none';
-                                animationImage.classList.remove('hidden');
-                                document.addEventListener('mousemove', handleMouseMove);
-                                animationImage.src = images[0].src;
+                                onImagesReady();
                             }
                         };
                         img.src = imagePath;
