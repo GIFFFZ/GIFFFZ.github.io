@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>600k skulls</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+
+<style>
+    body {
+        margin: 0;
+        background: #000;
+        overflow: hidden;
+    }
+
+    #num {
+        position: fixed;
+        bottom: 30px;
+        left: 30px;
+        color: #444;
+        font-family: monospace;
+        font-size: 55px;
+        letter-spacing: -2px;
+        user-select: none;
+    }
+
+    .thing {
+        position: absolute;
+        pointer-events: none;
+        will-change: transform;
+    }
+
+    .died {
+        filter: grayscale(1) contrast(2) sepia(1) brightness(0.5);
+    }
+</style>
+</head>
+<body>
+
+<div id="num">000000</div>
+
+<script>
+const { Engine, Runner, Bodies, Body, Composite, Events } = Matter;
+
+// engine setup
+const engine = Engine.create();
+engine.gravity.y = 0.8; // feels about right
+
+const runner = Runner.create();
+
+const skulls = [];
+
+const SKULL_SIZE = 135;
+const TOTAL = 140000;
+const SPECIAL_TARGET = 32;
+
+let count = 0;
+let specialCount = 0;
+
+function spawnSkull() {
+    if (count >= TOTAL) return;
+
+    count++;
+
+    const startX = window.innerWidth / 2;
+
+    // probability math so exactly 32 end up special
+    const remaining = TOTAL - count;
+    const stillNeeded = SPECIAL_TARGET - specialCount;
+    const chance = stillNeeded / remaining;
+
+    let special = false;
+
+    if (specialCount < SPECIAL_TARGET && Math.random() < chance) {
+        special = true;
+        specialCount++;
+    }
+
+    const body = Bodies.circle(startX, -100, SKULL_SIZE / 2, {
+        restitution: 0.2,
+        frictionAir: 0.04,
+        angle: Math.random() * 5
+    });
+
+    Body.setVelocity(body, {
+        x: (Math.random() - 0.5) * 6,
+        y: 5
+    });
+
+    const el = document.createElement("div");
+    el.className = special ? "thing died" : "thing";
+    el.style.width = SKULL_SIZE + "px";
+    el.style.height = SKULL_SIZE + "px";
+    el.style.background = "url('skull.png') no-repeat center/cover";
+
+    document.body.appendChild(el);
+    Composite.add(engine.world, body);
+
+    skulls.push({ body, el });
+
+    updateCounter();
+}
+
+function updateCounter() {
+    let text = count.toString();
+    while (text.length < 6) {
+        text = "0" + text;
+    }
+    document.getElementById("num").innerHTML = text;
+}
+
+Events.on(engine, "afterUpdate", () => {
+    for (let i = skulls.length - 1; i >= 0; i--) {
+        const item = skulls[i];
+        const pos = item.body.position;
+
+        // occasional little twitch
+        if (Math.random() < 0.015) {
+            Body.applyForce(item.body, pos, {
+                x: (Math.random() - 0.5) * 0.03,
+                y: 0.1
+            });
+        }
+
+        item.el.style.transform =
+            `translate(${pos.x - SKULL_SIZE / 2}px, ${pos.y - SKULL_SIZE / 2}px) rotate(${item.body.angle}rad)`;
+
+        if (pos.y > window.innerHeight + 200) {
+            Composite.remove(engine.world, item.body);
+            item.el.remove();
+            skulls.splice(i, 1);
+        }
+    }
+});
+
+// slightly faster than half a second
+setInterval(spawnSkull, 480);
+
+Runner.run(runner, engine);
+</script>
+
+</body>
+</html>
