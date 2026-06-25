@@ -28,7 +28,7 @@
             50%  { filter: contrast(1.1) brightness(0.8); transform: scale(1.005); }
             100% { filter: contrast(1.1) brightness(0.9); transform: scale(1); }
         }
-        .paused {
+        canvas.paused {
             filter: brightness(0) !important;
         }
         * { -webkit-tap-highlight-color: transparent; }
@@ -36,7 +36,7 @@
 </head>
 <body>
 
-    <video id="v" loop playsinline style="display:none;">
+    <video id="v" loop playsinline muted style="display:none;">
         <source src="output.mp4" type="video/mp4">
     </video>
     <canvas id="c"></canvas>
@@ -47,6 +47,7 @@
         const ctx = c.getContext('2d', { alpha: false });
         const scale = 0.4; 
         let isMoving = false;
+        let lastMotion = 0;
 
         v.addEventListener('loadedmetadata', function() {
             v.currentTime = Math.random() * v.duration;
@@ -62,8 +63,7 @@
         }
 
         function startMedia() {
-            v.muted = false;
-            v.play();
+            v.play().catch(() => {});
             render();
         }
 
@@ -73,17 +73,20 @@
             
             const motion = Math.abs(acc.x) + Math.abs(acc.y) + Math.abs(acc.z);
             
-            if (!this.lastMotion) { this.lastMotion = motion; return; }
+            if (lastMotion === 0) { 
+                lastMotion = motion; 
+                return; 
+            }
             
-            const delta = Math.abs(motion - this.lastMotion);
-            this.lastMotion = motion;
+            const delta = Math.abs(motion - lastMotion);
+            lastMotion = motion;
 
             if (delta > threshold) {
                 v.pause();
                 c.classList.add('paused');
             } else {
                 if (v.paused && v.readyState >= 2) {
-                    v.play().catch(()=>{});
+                    v.play().catch(() => {});
                     c.classList.remove('paused');
                 }
             }
@@ -93,10 +96,8 @@
         document.addEventListener('touchstart', startMedia, { once: true });
 
         window.onload = () => {
-            v.play().then(() => {
-                render();
-            }).catch(() => {
-            });
+            v.play().catch(() => {});
+            render();
         };
     </script>
 </body>
