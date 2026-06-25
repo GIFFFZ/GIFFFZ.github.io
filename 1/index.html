@@ -32,21 +32,43 @@
             filter: brightness(0) !important;
         }
         * { -webkit-tap-highlight-color: transparent; }
+        #muteToggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 10;
+            width: 50px;
+            height: 50px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            transition: background-color 0.3s;
+        }
+        #muteToggle:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
     </style>
 </head>
 <body>
 
-    <video id="v" loop playsinline muted style="display:none;">
+    <video id="v" loop playsinline style="display:none;">
         <source src="output.mp4" type="video/mp4">
     </video>
     <canvas id="c"></canvas>
+    <button id="muteToggle">🔊</button>
 
     <script>
         const v = document.getElementById('v');
         const c = document.getElementById('c');
+        const muteToggle = document.getElementById('muteToggle');
         const ctx = c.getContext('2d', { alpha: false });
         const scale = 0.4; 
-        let isMoving = false;
         let lastMotion = 0;
 
         v.addEventListener('loadedmetadata', function() {
@@ -63,9 +85,15 @@
         }
 
         function startMedia() {
+            v.muted = true; // Start muted for autoplay policy
             v.play().catch(() => {});
             render();
         }
+
+        muteToggle.addEventListener('click', () => {
+            v.muted = !v.muted;
+            muteToggle.textContent = v.muted ? '🔇' : '🔊';
+        });
 
         window.addEventListener('devicemotion', (event) => {
             const acc = event.accelerationIncludingGravity;
@@ -96,6 +124,7 @@
         document.addEventListener('touchstart', startMedia, { once: true });
 
         window.onload = () => {
+            v.muted = true;
             v.play().catch(() => {});
             render();
         };
